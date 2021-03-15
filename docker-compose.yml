@@ -1,0 +1,60 @@
+version: '3.7'
+services:
+
+  apache-php:
+    image: webdevops/php-nginx-dev:7.4
+    container_name: php
+    depends_on:
+      - mysql      
+    environment:
+      - WEB_DOCUMENT_ROOT=/var/www/public
+      - WEB_DOCUMENT_INDEX=index.php
+      - WEB_ALIAS_DOMAIN='*.vm'
+      - WEB_PHP_TIMEOUT=600
+      - WEB_PHP_SOCKET=127.0.0.1:9000
+      - PHP_DISMOD=ioncube,redis
+    ports:
+      - ${FORWARD_APACHE_PORT:-80}:80
+      #- ${FORWARD_PHP_PORT:-9000}:9000
+      - ${FORWARD_XDEBUG_PORT:-9001}:9001
+    volumes:
+      - .:/var/www
+    working_dir: /var/www
+    networks:
+      - sky-net-app
+
+  node:
+    image: library/node:15.5.0
+    container_name: node
+    environment:
+      - NODE_ENV='dev'
+    command: "tail -F anything" # avoid container exiting
+    volumes:
+      - .:/var/www
+    working_dir: /var/www
+    networks:
+      - sky-net-app
+
+  mysql:
+    image: mysql:8.0
+    container_name: spid-mysql
+    ports:
+      - ${FORWARD_DB_PORT:-3306}:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      SERVICE_TAG: dev
+      SERVICE_NAME: mysql
+    networks:
+      - sky-net-app
+
+# needed to make TSL work
+networks:
+
+  sky-net-appp:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
